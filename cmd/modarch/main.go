@@ -29,10 +29,8 @@ func main() {
 	base := engine.BuildBaseGraph(bundle)
 	framePaths := []string{}
 	maxFrame := min(*iteration, len(bundle.Frames))
-	current := base
 	for i := 0; i < maxFrame; i++ {
-		current = engine.ApplyFrame(current, bundle.Frames[i])
-		g := current
+		g := engine.ApplyFrame(base, bundle.Frames[i])
 		dotPath := filepath.Join(*outDir, fmt.Sprintf("frame-%03d.dot", i+1))
 		svgPath := filepath.Join(*outDir, fmt.Sprintf("frame-%03d.svg", i+1))
 		pngPath := filepath.Join(*outDir, fmt.Sprintf("frame-%03d.png", i+1))
