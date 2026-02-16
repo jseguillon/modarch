@@ -10,6 +10,6 @@ digraph modarch {
   "Link/deploy-to-s3" [shape=box label="Link/deploy-to-s3"];
   "Note/api-note" [shape=box label="Note/api-note"];
   "Note/detached-note" [shape=box label="Note/detached-note"];
-  "Deployment/prod/api" -> "ExternalResource/<nil>/s3-bucket" [color="#16a34a",label="uses",style="dashed"];
+  "Deployment/prod/api" -> "ExternalResource/s3-bucket" [color="#16a34a",label="uses",style="dashed"];
   "Note/api-note" -> "Deployment/prod/api" [arrowhead="none",color="#9a3412",style="dotted"];
 }

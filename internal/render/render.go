@@ -31,7 +31,19 @@ func ToDOT(g engine.Graph) string {
 		}
 		b.WriteString(fmt.Sprintf("  \"%s\" [shape=box label=\"%s\"];\n", n.ID(), n.ID()))
 	}
-	for _, e := range g.Edges {
+
+	edges := append([]model.Edge{}, g.Edges...)
+	sort.Slice(edges, func(i, j int) bool {
+		a, b := edges[i], edges[j]
+		if a.From.ID() != b.From.ID() {
+			return a.From.ID() < b.From.ID()
+		}
+		if a.To.ID() != b.To.ID() {
+			return a.To.ID() < b.To.ID()
+		}
+		return a.Type < b.Type
+	})
+	for _, e := range edges {
 		attrs := []string{}
 		for k, v := range e.Attrs {
 			attrs = append(attrs, fmt.Sprintf("%s=\"%s\"", k, v))
@@ -50,7 +62,19 @@ func ToSVG(g engine.Graph, title string) string {
 	b.WriteString(fmt.Sprintf("<svg xmlns='http://www.w3.org/2000/svg' width='%d' height='%d'>", w, h))
 	b.WriteString("<rect width='100%' height='100%' fill='white'/>")
 	b.WriteString(fmt.Sprintf("<text x='20' y='30' font-size='20' font-family='Arial'>%s</text>", title))
-	for _, e := range g.Edges {
+
+	edges := append([]model.Edge{}, g.Edges...)
+	sort.Slice(edges, func(i, j int) bool {
+		a, b := edges[i], edges[j]
+		if a.From.ID() != b.From.ID() {
+			return a.From.ID() < b.From.ID()
+		}
+		if a.To.ID() != b.To.ID() {
+			return a.To.ID() < b.To.ID()
+		}
+		return a.Type < b.Type
+	})
+	for _, e := range edges {
 		from, ok1 := layout[e.From.ID()]
 		to, ok2 := layout[e.To.ID()]
 		if !ok1 || !ok2 {
@@ -63,7 +87,9 @@ func ToSVG(g engine.Graph, title string) string {
 			b.WriteString(fmt.Sprintf("<text x='%d' y='%d' font-size='12' fill='%s'>%s</text>", mx, my, color, label))
 		}
 	}
-	for _, n := range layout {
+
+	nodes := sortedLayoutNodes(layout)
+	for _, n := range nodes {
 		fill := "#eef2ff"
 		if n.Node.Kind == "ExternalResource" {
 			fill = "#dcfce7"
@@ -76,7 +102,11 @@ func ToSVG(g engine.Graph, title string) string {
 		}
 		b.WriteString(fmt.Sprintf("<rect x='%d' y='%d' width='120' height='60' fill='%s' stroke='#111827'/>", n.X, n.Y, fill))
 		b.WriteString(fmt.Sprintf("<text x='%d' y='%d' font-size='11' font-family='Arial'>%s</text>", n.X+6, n.Y+25, n.Node.Kind))
-		b.WriteString(fmt.Sprintf("<text x='%d' y='%d' font-size='11' font-family='Arial'>%s</text>", n.X+6, n.Y+42, n.Node.Name))
+		label := n.Node.Name
+		if n.Node.Annotations["kgraph.io/foldMode"] == "collapse" {
+			label = n.Node.Name + " (collapsed)"
+		}
+		b.WriteString(fmt.Sprintf("<text x='%d' y='%d' font-size='11' font-family='Arial'>%s</text>", n.X+6, n.Y+42, label))
 	}
 	b.WriteString("</svg>")
 	return b.String()
@@ -86,7 +116,7 @@ func WritePNG(g engine.Graph, title, path string) error {
 	layout := layoutNodes(g)
 	img := image.NewRGBA(image.Rect(0, 0, 1200, 700))
 	draw.Draw(img, img.Bounds(), &image.Uniform{color.White}, image.Point{}, draw.Src)
-	for _, n := range layout {
+	for _, n := range sortedLayoutNodes(layout) {
 		fill := color.RGBA{238, 242, 255, 255}
 		if n.Node.Kind == "ExternalResource" {
 			fill = color.RGBA{220, 252, 231, 255}
@@ -119,6 +149,19 @@ func layoutNodes(g engine.Graph) map[string]LayoutNode {
 		}
 	}
 	return out
+}
+
+func sortedLayoutNodes(layout map[string]LayoutNode) []LayoutNode {
+	keys := make([]string, 0, len(layout))
+	for k := range layout {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	nodes := make([]LayoutNode, 0, len(keys))
+	for _, k := range keys {
+		nodes = append(nodes, layout[k])
+	}
+	return nodes
 }
 
 func pick(v, d string) string {

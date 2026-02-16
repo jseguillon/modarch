@@ -30,6 +30,7 @@ func BuildBaseGraph(bundle *model.Bundle) Graph {
 			}
 		}
 	}
+
 	styleByType := map[string]map[string]string{}
 	for _, s := range bundle.EdgeStyles {
 		styleByType[s.Type] = s.Attrs
@@ -45,16 +46,16 @@ func BuildBaseGraph(bundle *model.Bundle) Graph {
 }
 
 func ApplyFrame(g Graph, f model.Frame) Graph {
-	next := Graph{Nodes: append([]model.Resource{}, g.Nodes...), Edges: append([]model.Edge{}, g.Edges...)}
+	next := cloneGraph(g)
 	for _, patch := range f.Patches {
 		if patch.Target["kind"] == "Edge" {
 			for i, edge := range next.Edges {
 				if edgeMatchesPatch(edge, patch.Target) {
 					for _, op := range patch.Ops {
-						if op.Path == "/metadata/annotations/kgraph.io~1edgeColor" {
+						switch op.Path {
+						case "/metadata/annotations/kgraph.io~1edgeColor":
 							edge.Attrs["color"] = fmt.Sprintf("%v", op.Value)
-						}
-						if op.Path == "/metadata/annotations/kgraph.io~1edgeLabel" {
+						case "/metadata/annotations/kgraph.io~1edgeLabel":
 							edge.Attrs["label"] = fmt.Sprintf("%v", op.Value)
 						}
 					}
@@ -63,6 +64,7 @@ func ApplyFrame(g Graph, f model.Frame) Graph {
 			}
 			continue
 		}
+
 		for i, node := range next.Nodes {
 			if node.Kind == fmt.Sprintf("%v", patch.Target["kind"]) &&
 				node.Name == fmt.Sprintf("%v", patch.Target["name"]) &&
@@ -84,6 +86,32 @@ func ApplyFrame(g Graph, f model.Frame) Graph {
 	}
 	next.Edges = filterEdges(next)
 	return next
+}
+
+func cloneGraph(g Graph) Graph {
+	nodes := make([]model.Resource, len(g.Nodes))
+	for i, n := range g.Nodes {
+		copied := n
+		copied.Labels = cloneMap(n.Labels)
+		copied.Annotations = cloneMap(n.Annotations)
+		nodes[i] = copied
+	}
+	edges := make([]model.Edge, len(g.Edges))
+	for i, e := range g.Edges {
+		edges[i] = model.Edge{From: e.From, To: e.To, Type: e.Type, Attrs: cloneMap(e.Attrs)}
+	}
+	return Graph{Nodes: nodes, Edges: edges}
+}
+
+func cloneMap(in map[string]string) map[string]string {
+	if in == nil {
+		return map[string]string{}
+	}
+	out := make(map[string]string, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
 }
 
 func filterEdges(g Graph) []model.Edge {
@@ -114,7 +142,12 @@ func deploymentEnvFromEdges(dep model.Resource) []model.Edge {
 		for _, item := range envFrom {
 			cfg := toMap(toMap(item)["configMapRef"])
 			name := fmt.Sprintf("%v", cfg["name"])
-			out = append(out, model.Edge{From: model.Ref{Kind: "Deployment", Namespace: dep.Namespace, Name: dep.Name}, To: model.Ref{Kind: "ConfigMap", Namespace: dep.Namespace, Name: name}, Type: "envFrom", Attrs: map[string]string{}})
+			out = append(out, model.Edge{
+				From:  model.Ref{Kind: "Deployment", Namespace: dep.Namespace, Name: dep.Name},
+				To:    model.Ref{Kind: "ConfigMap", Namespace: dep.Namespace, Name: name},
+				Type:  "envFrom",
+				Attrs: map[string]string{},
+			})
 		}
 	}
 	return out
@@ -132,7 +165,12 @@ func serviceToBackends(svc model.Resource, nodes []model.Resource) []model.Edge 
 			continue
 		}
 		if n.Labels["app"] == app {
-			out = append(out, model.Edge{From: model.Ref{Kind: "Service", Namespace: svc.Namespace, Name: svc.Name}, To: model.Ref{Kind: n.Kind, Namespace: n.Namespace, Name: n.Name}, Type: "selects", Attrs: map[string]string{"style": "dotted", "color": "#6b7280", "label": "selects"}})
+			out = append(out, model.Edge{
+				From:  model.Ref{Kind: "Service", Namespace: svc.Namespace, Name: svc.Name},
+				To:    model.Ref{Kind: n.Kind, Namespace: n.Namespace, Name: n.Name},
+				Type:  "selects",
+				Attrs: map[string]string{"style": "dotted", "color": "#6b7280", "label": "selects"},
+			})
 		}
 	}
 	return out
@@ -141,7 +179,12 @@ func serviceToBackends(svc model.Resource, nodes []model.Resource) []model.Edge 
 func explicitLink(link model.Resource) model.Edge {
 	from := toMap(link.Spec["fromRef"])
 	to := toMap(link.Spec["toRef"])
-	return model.Edge{From: model.Ref{Kind: fmt.Sprintf("%v", from["kind"]), Namespace: fmt.Sprintf("%v", from["namespace"]), Name: fmt.Sprintf("%v", from["name"])}, To: model.Ref{Kind: fmt.Sprintf("%v", to["kind"]), Namespace: fmt.Sprintf("%v", to["namespace"]), Name: fmt.Sprintf("%v", to["name"])}, Type: fmt.Sprintf("%v", link.Spec["type"]), Attrs: map[string]string{}}
+	return model.Edge{
+		From:  model.Ref{Kind: str(from["kind"]), Namespace: str(from["namespace"]), Name: str(from["name"])},
+		To:    model.Ref{Kind: str(to["kind"]), Namespace: str(to["namespace"]), Name: str(to["name"])},
+		Type:  str(link.Spec["type"]),
+		Attrs: map[string]string{},
+	}
 }
 
 func noteEdge(note model.Resource) (model.Edge, bool) {
@@ -149,7 +192,12 @@ func noteEdge(note model.Resource) (model.Edge, bool) {
 	if len(target) == 0 {
 		return model.Edge{}, false
 	}
-	return model.Edge{From: model.Ref{Kind: "Note", Namespace: note.Namespace, Name: note.Name}, To: model.Ref{Kind: fmt.Sprintf("%v", target["kind"]), Namespace: fmt.Sprintf("%v", target["namespace"]), Name: fmt.Sprintf("%v", target["name"])}, Type: "note", Attrs: map[string]string{}}, true
+	return model.Edge{
+		From:  model.Ref{Kind: "Note", Namespace: note.Namespace, Name: note.Name},
+		To:    model.Ref{Kind: str(target["kind"]), Namespace: str(target["namespace"]), Name: str(target["name"])},
+		Type:  "note",
+		Attrs: map[string]string{},
+	}, true
 }
 
 func edgeMatchesPatch(e model.Edge, target map[string]any) bool {
@@ -166,4 +214,11 @@ func toMap(v any) map[string]any {
 		return map[string]any{}
 	}
 	return m
+}
+
+func str(v any) string {
+	if v == nil {
+		return ""
+	}
+	return fmt.Sprintf("%v", v)
 }
