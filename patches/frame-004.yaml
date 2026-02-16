@@ -1,0 +1,12 @@
+apiVersion: kgraph.io/v1
+kind: PatchSet
+metadata:
+  name: frame-004
+spec:
+  operations:
+    - action: annotate
+      selector:
+        kind: Link
+        name: deploy-to-s3
+      values:
+        kgraph.io/node.attr.color: "#7c3aed"

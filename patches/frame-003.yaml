@@ -1,0 +1,12 @@
+apiVersion: kgraph.io/v1
+kind: PatchSet
+metadata:
+  name: frame-003
+spec:
+  operations:
+    - action: annotate
+      selector:
+        kind: Service
+        namespace: prod
+      values:
+        kgraph.io/ignore: "true"

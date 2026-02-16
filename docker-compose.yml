@@ -1,0 +1,12 @@
+services:
+  dev:
+    image: golang:1.22-bookworm
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    command: sleep infinity
+    depends_on:
+      - graphviz
+  graphviz:
+    image: nshine/dot:latest
+    command: sleep infinity

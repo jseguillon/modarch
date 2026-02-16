@@ -1,0 +1,13 @@
+apiVersion: kgraph.io/v1
+kind: PatchSet
+metadata:
+  name: frame-002
+spec:
+  operations:
+    - action: label
+      selector:
+        kind: Deployment
+        name: api
+        namespace: prod
+      values:
+        tier: critical
