@@ -1,0 +1,13 @@
+apiVersion: kgraph.io/v1
+kind: PatchSet
+metadata:
+  name: frame-001
+spec:
+  operations:
+    - action: annotate
+      selector:
+        kind: Deployment
+        name: api
+        namespace: prod
+      values:
+        kgraph.io/node.attr.color: "#0f766e"
