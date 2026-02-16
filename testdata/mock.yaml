@@ -1,0 +1,264 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: prod
+  labels: {app: api}
+spec:
+  template:
+    metadata:
+      labels: {app: api}
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/example/api:1.0.0
+          envFrom:
+            - configMapRef: {name: api-config}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: prod
+  labels: {app: api}
+spec:
+  selector: {app: api}
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: prod
+data: {LOG_LEVEL: info}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api-123
+  namespace: prod
+spec:
+  containers:
+    - name: api
+      image: ghcr.io/example/api:1.0.0
+    - name: sidecar
+      image: ghcr.io/example/sidecar:2.1.0
+---
+apiVersion: kgraph.io/v1
+kind: ExternalResource
+metadata:
+  name: public-lb
+spec:
+  type: LoadBalancer
+---
+apiVersion: kgraph.io/v1
+kind: ExternalResource
+metadata:
+  name: s3-bucket
+spec:
+  type: S3
+---
+apiVersion: kgraph.io/v1
+kind: GraphStyle
+metadata:
+  name: critical-workloads
+spec:
+  selector:
+    kinds: ["Deployment"]
+    labelSelector: "tier=critical"
+  node:
+    attrs:
+      color: "#111827"
+      penwidth: 2
+    labelTemplate: |
+      <
+      <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6">
+        <TR><TD><B>{{ kind }}</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>{{ namespace }}/{{ name }}</B></TD></TR>
+      </TABLE>
+      >
+---
+apiVersion: kgraph.io/v1
+kind: EdgeStyle
+metadata:
+  name: envfrom-style
+spec:
+  selector:
+    type: "envFrom"
+    toNamespaces: ["prod"]
+  edge:
+    attrs:
+      color: "#16a34a"
+      penwidth: 3
+      label: "envFrom"
+---
+apiVersion: kgraph.io/v1
+kind: Link
+metadata:
+  name: lb-to-svc
+spec:
+  type: routesTo
+  fromRef: {apiVersion: kgraph.io/v1, kind: ExternalResource, name: public-lb}
+  toRef: {apiVersion: v1, kind: Service, namespace: prod, name: api}
+---
+apiVersion: kgraph.io/v1
+kind: Link
+metadata:
+  name: deploy-to-s3
+spec:
+  type: uses
+  fromRef: {apiVersion: apps/v1, kind: Deployment, namespace: prod, name: api}
+  toRef: {apiVersion: kgraph.io/v1, kind: ExternalResource, name: s3-bucket}
+---
+apiVersion: kgraph.io/v1
+kind: Note
+metadata:
+  name: api-note
+spec:
+  text: "Deploy uses envFrom"
+  targetRef: {apiVersion: apps/v1, kind: Deployment, namespace: prod, name: api}
+---
+apiVersion: kgraph.io/v1
+kind: Note
+metadata:
+  name: detached-note
+spec:
+  text: "Detached note"
+---
+apiVersion: kgraph.io/v1
+kind: EdgeStyle
+metadata:
+  name: notes-style
+spec:
+  selector:
+    type: note
+  edge:
+    attrs:
+      color: "#9a3412"
+      style: "dotted"
+      arrowhead: "none"
+---
+apiVersion: kgraph.io/v1
+kind: EdgeStyle
+metadata:
+  name: routes-style
+spec:
+  selector:
+    type: routesTo
+  edge:
+    attrs:
+      color: "#2563eb"
+      penwidth: 2
+      label: "routesTo"
+---
+apiVersion: kgraph.io/v1
+kind: EdgeStyle
+metadata:
+  name: uses-style
+spec:
+  selector:
+    type: uses
+  edge:
+    attrs:
+      color: "#16a34a"
+      style: "dashed"
+      label: "uses"
+---
+apiVersion: kgraph.io/v1
+kind: Frame
+metadata:
+  name: frame-001-fold-config
+spec:
+  patches:
+    - target:
+        kind: ConfigMap
+        name: api-config
+        namespace: prod
+      ops:
+        - op: add
+          path: /metadata/annotations/kgraph.io~1fold
+          value: "true"
+---
+apiVersion: kgraph.io/v1
+kind: Frame
+metadata:
+  name: frame-002-fold-collapse
+spec:
+  patches:
+    - target:
+        kind: ConfigMap
+        name: api-config
+        namespace: prod
+      ops:
+        - op: add
+          path: /metadata/annotations/kgraph.io~1fold
+          value: "true"
+        - op: add
+          path: /metadata/annotations/kgraph.io~1foldMode
+          value: collapse
+---
+apiVersion: kgraph.io/v1
+kind: Frame
+metadata:
+  name: frame-003-fold-hideedges-service
+spec:
+  patches:
+    - target:
+        kind: Service
+        name: api
+        namespace: prod
+      ops:
+        - op: add
+          path: /metadata/annotations/kgraph.io~1fold
+          value: "true"
+---
+apiVersion: kgraph.io/v1
+kind: Frame
+metadata:
+  name: frame-004-edge-patch-override
+spec:
+  patches:
+    - target:
+        kind: Edge
+        from:
+          kind: Deployment
+          name: api
+          namespace: prod
+        to:
+          kind: ConfigMap
+          name: api-config
+          namespace: prod
+        type: envFrom
+      ops:
+        - op: add
+          path: /metadata/annotations/kgraph.io~1edgeColor
+          value: "#ef4444"
+        - op: add
+          path: /metadata/annotations/kgraph.io~1edgeLabel
+          value: "envFrom (patched)"
+---
+apiVersion: kgraph.io/v1
+kind: Animation
+metadata:
+  name: fold-unfold-demo
+spec:
+  base:
+    inputs: ["mock"]
+    patches: []
+  frames:
+    refs:
+      - apiVersion: kgraph.io/v1
+        kind: Frame
+        name: frame-001-fold-config
+      - apiVersion: kgraph.io/v1
+        kind: Frame
+        name: frame-002-fold-collapse
+      - apiVersion: kgraph.io/v1
+        kind: Frame
+        name: frame-003-fold-hideedges-service
+      - apiVersion: kgraph.io/v1
+        kind: Frame
+        name: frame-004-edge-patch-override

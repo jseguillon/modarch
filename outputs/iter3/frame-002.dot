@@ -1,0 +1,17 @@
+digraph modarch {
+  rankdir=LR;
+  "Deployment/prod/api" [shape=box label="Deployment/prod/api"];
+  "Service/prod/api" [shape=box label="Service/prod/api"];
+  "ConfigMap/prod/api-config" [shape=box style=filled fillcolor="#f3f4f6" label="ConfigMap/prod/api-config\n(collapsed)"];
+  "Pod/prod/api-123" [shape=box label="Pod/prod/api-123"];
+  "ExternalResource/public-lb" [shape=box label="ExternalResource/public-lb"];
+  "ExternalResource/s3-bucket" [shape=box label="ExternalResource/s3-bucket"];
+  "Link/lb-to-svc" [shape=box label="Link/lb-to-svc"];
+  "Link/deploy-to-s3" [shape=box label="Link/deploy-to-s3"];
+  "Note/api-note" [shape=box label="Note/api-note"];
+  "Note/detached-note" [shape=box label="Note/detached-note"];
+  "Service/prod/api" -> "Deployment/prod/api" [color="#6b7280",label="selects",style="dotted"];
+  "ExternalResource/<nil>/public-lb" -> "Service/prod/api" [color="#2563eb",label="routesTo",penwidth="2"];
+  "Deployment/prod/api" -> "ExternalResource/<nil>/s3-bucket" [color="#16a34a",label="uses",style="dashed"];
+  "Note/api-note" -> "Deployment/prod/api" [arrowhead="none",color="#9a3412",style="dotted"];
+}
