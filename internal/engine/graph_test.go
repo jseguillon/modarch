@@ -20,34 +20,6 @@ func TestBuildBaseGraph(t *testing.T) {
 	}
 }
 
-func TestApplyFrameEdgePatch(t *testing.T) {
-	bundle, err := model.ParseBundle("../../testdata/mock.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	g := BuildBaseGraph(bundle)
-
-	folded := ApplyFrame(g, bundle.Frames[0])
-	patched := ApplyFrame(folded, bundle.Frames[3])
-	found := false
-	for _, e := range patched.Edges {
-		if e.Type == "envFrom" && e.Attrs["label"] == "envFrom (patched)" {
-			found = true
-		}
-	}
-	if found {
-		t.Fatalf("envFrom edge should remain hidden when target node is folded")
-	}
-
-	patchedOnly := ApplyFrame(g, bundle.Frames[3])
-	for _, e := range patchedOnly.Edges {
-		if e.Type == "envFrom" && e.Attrs["label"] == "envFrom (patched)" {
-			return
-		}
-	}
-	t.Fatalf("expected patched envFrom edge in non-folded graph")
-}
-
 func TestExplicitLinkKeepsEmptyNamespace(t *testing.T) {
 	bundle, err := model.ParseBundle("../../testdata/mock.yaml")
 	if err != nil {

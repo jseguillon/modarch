@@ -23,15 +23,9 @@ func ParseBundle(path string) (*Bundle, error) {
 		}
 		kind := asString(doc["kind"])
 		switch kind {
-		case "Frame":
-			f, err := parseFrame(doc)
-			if err != nil {
-				return nil, err
-			}
-			bundle.Frames = append(bundle.Frames, f)
 		case "EdgeStyle":
 			bundle.EdgeStyles = append(bundle.EdgeStyles, parseEdgeStyle(doc))
-		case "Animation", "GraphStyle":
+		case "Animation", "GraphStyle", "Frame":
 			continue
 		default:
 			bundle.Resources = append(bundle.Resources, parseResource(doc))
@@ -45,27 +39,6 @@ func parseResource(doc map[string]any) Resource {
 	spec, _ := doc["spec"].(map[string]any)
 	data, _ := doc["data"].(map[string]any)
 	return Resource{APIVersion: asString(doc["apiVersion"]), Kind: asString(doc["kind"]), Namespace: asString(meta["namespace"]), Name: asString(meta["name"]), Labels: asStringMap(meta["labels"]), Annotations: asStringMap(meta["annotations"]), Spec: spec, Data: data, Raw: doc}
-}
-
-func parseFrame(doc map[string]any) (Frame, error) {
-	meta, _ := doc["metadata"].(map[string]any)
-	spec, _ := doc["spec"].(map[string]any)
-	patchesAny, _ := spec["patches"].([]any)
-	f := Frame{Name: asString(meta["name"])}
-	for _, p := range patchesAny {
-		raw, ok := p.(map[string]any)
-		if !ok {
-			return Frame{}, fmt.Errorf("invalid frame patch in %s", f.Name)
-		}
-		patch := FramePatch{Target: mapFromAny(raw["target"])}
-		opsAny, _ := raw["ops"].([]any)
-		for _, opAny := range opsAny {
-			opMap := mapFromAny(opAny)
-			patch.Ops = append(patch.Ops, PatchOp{Op: asString(opMap["op"]), Path: asString(opMap["path"]), Value: opMap["value"]})
-		}
-		f.Patches = append(f.Patches, patch)
-	}
-	return f, nil
 }
 
 func parseEdgeStyle(doc map[string]any) EdgeStyle {

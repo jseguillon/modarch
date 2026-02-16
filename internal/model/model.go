@@ -41,22 +41,6 @@ type Edge struct {
 	Attrs map[string]string
 }
 
-type FramePatch struct {
-	Target map[string]any `yaml:"target"`
-	Ops    []PatchOp      `yaml:"ops"`
-}
-
-type PatchOp struct {
-	Op    string `yaml:"op"`
-	Path  string `yaml:"path"`
-	Value any    `yaml:"value"`
-}
-
-type Frame struct {
-	Name    string
-	Patches []FramePatch
-}
-
 type EdgeStyle struct {
 	Type  string
 	Attrs map[string]string
@@ -64,6 +48,5 @@ type EdgeStyle struct {
 
 type Bundle struct {
 	Resources  []Resource
-	Frames     []Frame
 	EdgeStyles []EdgeStyle
 }

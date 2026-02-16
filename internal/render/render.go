@@ -25,10 +25,6 @@ func ToDOT(g engine.Graph) string {
 	b.WriteString("digraph modarch {\n")
 	b.WriteString("  rankdir=LR;\n")
 	for _, n := range g.Nodes {
-		if n.Annotations["kgraph.io/fold"] == "true" && n.Annotations["kgraph.io/foldMode"] == "collapse" {
-			b.WriteString(fmt.Sprintf("  \"%s\" [shape=box style=filled fillcolor=\"#f3f4f6\" label=\"%s\\n(collapsed)\"];\n", n.ID(), n.ID()))
-			continue
-		}
 		b.WriteString(fmt.Sprintf("  \"%s\" [shape=box label=\"%s\"];\n", n.ID(), n.ID()))
 	}
 
@@ -97,16 +93,9 @@ func ToSVG(g engine.Graph, title string) string {
 		if n.Node.Kind == "Note" {
 			fill = "#ffedd5"
 		}
-		if n.Node.Annotations["kgraph.io/fold"] == "true" {
-			fill = "#f3f4f6"
-		}
 		b.WriteString(fmt.Sprintf("<rect x='%d' y='%d' width='120' height='60' fill='%s' stroke='#111827'/>", n.X, n.Y, fill))
 		b.WriteString(fmt.Sprintf("<text x='%d' y='%d' font-size='11' font-family='Arial'>%s</text>", n.X+6, n.Y+25, n.Node.Kind))
-		label := n.Node.Name
-		if n.Node.Annotations["kgraph.io/foldMode"] == "collapse" {
-			label = n.Node.Name + " (collapsed)"
-		}
-		b.WriteString(fmt.Sprintf("<text x='%d' y='%d' font-size='11' font-family='Arial'>%s</text>", n.X+6, n.Y+42, label))
+		b.WriteString(fmt.Sprintf("<text x='%d' y='%d' font-size='11' font-family='Arial'>%s</text>", n.X+6, n.Y+42, n.Node.Name))
 	}
 	b.WriteString("</svg>")
 	return b.String()

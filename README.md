@@ -1,11 +1,10 @@
 # modarch
 
-`modarch` is a Go CLI that turns Kubernetes + `kgraph.io` YAML into architecture graph outputs:
+`modarch` is a Go CLI that turns Kubernetes + `kgraph.io` YAML into architecture graph outputs.
 
 - DOT graph files (`.dot`)
-- SVG frame renders (`.svg`)
-- PNG frame images (`.png`)
-- Animated PNG timeline (`.apng`)
+- SVG graph renders (`.svg`)
+- PNG graph image (`.png`, generated locally and ignored)
 
 ## Features
 
@@ -19,44 +18,33 @@
    - Builds note attachment edges from `Note` objects.
 3. **Style system**
    - Applies `EdgeStyle` resources by edge type.
-4. **Frame patching for animation**
-   - Applies frame patches to fold resources.
-   - Supports edge-level patch overrides for color/label.
-5. **Renderer outputs**
-   - Emits DOT and SVG for each frame.
-   - Emits PNG for each frame.
-   - Composes APNG from the frame PNG files.
+4. **Renderer outputs**
+   - Emits DOT and SVG for the final architecture graph.
+   - Emits PNG for local previewing.
 
 ## Test data
 
-Test data is included in `testdata/mock.yaml` and mirrors your supplied scenario, including:
+Test data is included in `testdata/mock.yaml` and includes:
 
 - app stack (`Deployment`, `Service`, `ConfigMap`, `Pod`)
 - external resources (`ExternalResource`)
 - graph style and edge style resources
 - links and notes
-- 4 animation `Frame`s and a final `Animation` resource
 
 ## Dev stack
 
 - **Language:** Go 1.24+
 - **Data format:** YAML (parsed via Ruby stdlib `YAML` bridge)
-- **Animation encoding:** custom APNG chunk encoder in Go
 - **Testing:** `go test ./...`
 
 ## Usage
 
 ```bash
-go run ./cmd/modarch --input testdata/mock.yaml --out outputs --iteration 4
+go run ./cmd/modarch --input testdata/mock.yaml --out outputs
 ```
 
-Progressive animation exports:
+Produces:
 
-```bash
-go run ./cmd/modarch --input testdata/mock.yaml --out outputs/iter1 --iteration 1
-go run ./cmd/modarch --input testdata/mock.yaml --out outputs/iter2 --iteration 2
-go run ./cmd/modarch --input testdata/mock.yaml --out outputs/iter3 --iteration 3
-go run ./cmd/modarch --input testdata/mock.yaml --out outputs/iter4 --iteration 4
-```
-
-Each output folder includes frame DOT/SVG/PNG files and `iteration-N.apng`.
+- `outputs/graph.dot`
+- `outputs/graph.svg`
+- `outputs/graph.png` (ignored by git)
